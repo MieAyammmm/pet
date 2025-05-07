@@ -1,5 +1,4 @@
 {
-  "name": "expense-tracker",
   "main": "src/api/index.js",
   "compatibility_date": "2024-03-01",
   "d1_databases": [
@@ -8,5 +7,6 @@
       "database_name": "expense-db",
       "database_id": "dce6847e-9b89-4a61-99a0-c80df4df9454"
     }
-  ]
+  ],
+  "routes": [{ "pattern": "api/*", "zone_id": "auto" }]
 }
