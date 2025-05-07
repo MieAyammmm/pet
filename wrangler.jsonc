@@ -1,13 +1,13 @@
 {
-	"name": "expense-tracker",
+  "name": "expense-tracker",
   "main": "src/api/index.js",
   "compatibility_date": "2024-03-01",
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "expense-db",
-      "database_id": "dce6847e-9b89-4a61-99a0-c80df4df9454"
-    }
+      "database_id": "dce6847e-9b89-4a61-99a0-c80df4df9454",
+    },
   ],
-  "routes": [{ "pattern": "expense-tracker.briad0096.workers.dev//*", "zone_id": "auto" }]
+  "routes": [{ "pattern": "expense-tracker.briad0096.workers.dev/*", "zone_id": "auto" }],
 }

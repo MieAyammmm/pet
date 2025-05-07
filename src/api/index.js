@@ -96,4 +96,6 @@ app.onError((err, c) => {
 
 app.notFound((c) => c.json({ error: 'not found' }, 404))
 
+app.get('/', (c) => c.text('Expense Tracker API Ready 🚀'))
+
 export default app
