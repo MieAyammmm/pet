@@ -18,6 +18,16 @@ app.use(
   }),
 )
 
+app.options('/*', (c) => {
+  return new Response(null, {
+    headers: {
+      'Access-Control-Allow-Origin': 'https://expense-tracker-6kf.pages.dev',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
+})
+
 // ======================
 // 2. Health Check Endpoint
 // ======================
