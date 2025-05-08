@@ -9,8 +9,8 @@ const app = new Hono()
 app.use(
   '/*',
   cors({
-    origin: ['https://your-frontend-domain.pages.dev'], // Ganti dengan domain frontend
-    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    origin: ['http://localhost:5173', 'https://expense-tracker-6kf.pages.dev/'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
     exposeHeaders: ['Content-Length'],
     maxAge: 600,
@@ -26,6 +26,8 @@ app.get('/', (c) => c.text('Expense Tracker API Ready 🚀'))
 // ======================
 // 3. CRUD Endpoints (Dengan Error Handling)
 // ======================
+
+// Get all transactions
 app.get('/transactions', async (c) => {
   try {
     const { results } = await c.env.DB.prepare(
@@ -34,35 +36,90 @@ app.get('/transactions', async (c) => {
     return c.json(results)
   } catch (error) {
     console.error('DB Error:', error)
-    return c.json({ error: 'Database operation failed' }, 500)
+    return c.json({ error: 'Failed to fetch transactions' }, 500)
   }
 })
 
+// Create new transaction
 app.post('/transactions', async (c) => {
   try {
     const { name, amount, category } = await c.req.json()
 
     // Validasi input
-    if (!name || typeof amount !== 'number') {
-      return c.json({ error: 'Invalid input data' }, 400)
+    if (!name || typeof amount !== 'number' || amount <= 0) {
+      return c.json({ error: 'Invalid input data. Name and positive amount are required.' }, 400)
     }
 
-    const { success } = await c.env.DB.prepare(
+    const { success, meta } = await c.env.DB.prepare(
       'INSERT INTO transactions (name, amount, category) VALUES (?, ?, ?)',
     )
       .bind(name, amount, category || null)
       .run()
 
-    return c.json({
-      success,
-      message: 'Transaction added successfully',
-    })
+    if (!success) {
+      return c.json({ error: 'Failed to insert transaction' }, 500)
+    }
+
+    // Ambil data yang baru dibuat
+    const { results } = await c.env.DB.prepare('SELECT * FROM transactions WHERE id = ?')
+      .bind(meta.last_row_id)
+      .all()
+
+    return c.json(
+      {
+        success: true,
+        data: results[0],
+        message: 'Transaction added successfully',
+      },
+      201,
+    )
   } catch (error) {
     console.error('DB Error:', error)
     return c.json({ error: 'Failed to add transaction' }, 500)
   }
 })
 
+// Update transaction
+app.put('/transactions/:id', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { name, amount, category } = await c.req.json()
+
+    // Validasi input
+    if (!id || isNaN(parseInt(id))) {
+      return c.json({ error: 'Invalid transaction ID' }, 400)
+    }
+    if (!name || typeof amount !== 'number' || amount <= 0) {
+      return c.json({ error: 'Invalid input data. Name and positive amount are required.' }, 400)
+    }
+
+    const { success } = await c.env.DB.prepare(
+      'UPDATE transactions SET name = ?, amount = ?, category = ? WHERE id = ?',
+    )
+      .bind(name, amount, category || null, id)
+      .run()
+
+    if (!success) {
+      return c.json({ error: 'Transaction not found or update failed' }, 404)
+    }
+
+    // Ambil data yang sudah diupdate
+    const { results } = await c.env.DB.prepare('SELECT * FROM transactions WHERE id = ?')
+      .bind(id)
+      .all()
+
+    return c.json({
+      success: true,
+      data: results[0],
+      message: 'Transaction updated successfully',
+    })
+  } catch (error) {
+    console.error('DB Error:', error)
+    return c.json({ error: 'Failed to update transaction' }, 500)
+  }
+})
+
+// Delete transaction
 app.delete('/transactions/:id', async (c) => {
   try {
     const id = c.req.param('id')
@@ -72,13 +129,22 @@ app.delete('/transactions/:id', async (c) => {
       return c.json({ error: 'Invalid transaction ID' }, 400)
     }
 
+    // Cek apakah transaksi ada sebelum menghapus
+    const { results } = await c.env.DB.prepare('SELECT id FROM transactions WHERE id = ?')
+      .bind(id)
+      .all()
+
+    if (!results.length) {
+      return c.json({ error: 'Transaction not found' }, 404)
+    }
+
     const { success } = await c.env.DB.prepare('DELETE FROM transactions WHERE id = ?')
       .bind(id)
       .run()
 
     return c.json({
-      success,
-      message: success ? 'Transaction deleted' : 'No transaction found',
+      success: !!success,
+      message: 'Transaction deleted successfully',
     })
   } catch (error) {
     console.error('DB Error:', error)
@@ -94,8 +160,6 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal server error' }, 500)
 })
 
-app.notFound((c) => c.json({ error: 'not found' }, 404))
-
-app.get('/', (c) => c.text('Expense Tracker API Ready 🚀'))
+app.notFound((c) => c.json({ error: 'Endpoint not found' }, 404))
 
 export default app
