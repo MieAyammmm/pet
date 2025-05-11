@@ -3,26 +3,29 @@
     <div class="container">
       <header>
         <h1>Expense Tracker</h1>
-        <p class="subtitle">Kelola pengeluaran Anda dengan mudah</p>
+        <p class="subtitle">Buat ngapain aja duitnya?</p>
       </header>
 
-      <!-- Form Section -->
+      <!-- Form Section - Modified -->
       <section class="form-section">
         <form @submit.prevent="isEditing ? handleUpdate() : handleSubmit()">
-          <div class="form-group">
-            <input v-model="formData.name" placeholder="Nama Transaksi" required />
-          </div>
-          <div class="form-group">
-            <input
-              v-model.number="formData.amount"
-              type="number"
-              placeholder="Jumlah (Rp)"
-              required
-              min="1"
-            />
-          </div>
-          <div class="form-group">
-            <input v-model="formData.category" placeholder="Kategori (Opsional)" />
+          <div class="form-row">
+            <div class="form-group">
+              <input v-model="formData.name" placeholder="Nama Transaksi" required />
+            </div>
+            <div class="form-group">
+              <input
+                v-model.number="formData.amount"
+                type="number"
+                placeholder="Jumlah (Rp)"
+                required
+                min="1"
+                class="no-spinner"
+              />
+            </div>
+            <div class="form-group">
+              <input v-model="formData.category" placeholder="Kategori (Opsional)" />
+            </div>
           </div>
           <div class="form-actions">
             <button type="submit" class="btn-primary">
@@ -54,10 +57,10 @@
           <table>
             <thead>
               <tr>
-                <th class="name-col">Nama Transaksi</th>
-                <th class="amount-col">Jumlah</th>
-                <th class="category-col">Kategori</th>
-                <th class="actions-col">Aksi</th>
+                <th class="name-col">NAMA TRANSAKSI</th>
+                <th class="amount-col">JUMLAH</th>
+                <th class="category-col">KATEGORI</th>
+                <th class="actions-col">AKSI</th>
               </tr>
             </thead>
             <tbody>
@@ -109,8 +112,8 @@
             />
           </svg>
         </div>
-        <h3>Belum ada transaksi</h3>
-        <p>Mulai dengan menambahkan transaksi pertama Anda</p>
+        <h3>Duitnya belum kurang tuh</h3>
+        <p>Beli sesuatu!!!</p>
       </div>
     </div>
   </div>
@@ -316,7 +319,7 @@ header h1 {
   font-size: 1rem;
 }
 
-/* Form Styles */
+/* Form Styles - Modified */
 .form-section {
   background-color: #f8fafc;
   border-radius: 8px;
@@ -325,24 +328,18 @@ header h1 {
   border-left: 4px solid #3b82f6;
 }
 
-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+.form-row {
+  display: flex;
   gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
 }
 
-.form-group label {
-  font-size: 0.875rem;
-  color: #64748b;
-  margin-bottom: 0.5rem;
-}
-
-input {
+.form-group input {
+  width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -350,15 +347,22 @@ input {
   transition: all 0.2s ease;
 }
 
-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+/* Improved no-spinner implementation */
+.no-spinner {
+  appearance: textfield;
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+}
+
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .form-actions {
   display: flex;
-  align-items: flex-end;
+  justify-content: center;
   gap: 0.75rem;
 }
 
@@ -472,7 +476,7 @@ button {
   }
 }
 
-/* Table Styles */
+/* Table Styles - Modified */
 .table-section {
   margin-top: 2rem;
 }
@@ -484,9 +488,7 @@ button {
 table {
   width: 100%;
   border-collapse: collapse;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  table-layout: fixed;
 }
 
 thead {
@@ -520,6 +522,7 @@ tbody tr:hover {
 .amount {
   font-weight: 600;
   color: #1e293b;
+  text-align: right;
 }
 
 .category-tag {
@@ -534,6 +537,7 @@ tbody tr:hover {
 .actions {
   display: flex;
   gap: 0.5rem;
+  justify-content: center;
 }
 
 .actions button {
@@ -608,12 +612,8 @@ tbody tr:hover {
     padding: 1.5rem;
   }
 
-  form {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    grid-column: 1 / -1;
+  .form-row {
+    flex-direction: column;
   }
 
   th,
