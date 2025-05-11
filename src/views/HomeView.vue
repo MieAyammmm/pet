@@ -1,62 +1,123 @@
 <template>
   <div id="app">
     <div class="container">
-      <!-- Form Tambah/Edit Data -->
-      <form @submit.prevent="isEditing ? handleUpdate() : handleSubmit()">
-        <input v-model="formData.name" placeholder="Nama Transaksi" required />
-        <input
-          v-model.number="formData.amount"
-          type="number"
-          placeholder="Jumlah"
-          required
-          min="1"
-        />
-        <input v-model="formData.category" placeholder="Kategori" />
-        <button type="submit">
-          {{ isEditing ? 'Update' : 'Tambah' }}
-        </button>
-        <button v-if="isEditing" type="button" @click="cancelEdit">Batal</button>
-      </form>
+      <header>
+        <h1>Expense Tracker</h1>
+        <p class="subtitle">Kelola pengeluaran Anda dengan mudah</p>
+      </header>
 
-      <!-- Pesan Error/Sukses -->
-      <div v-if="message" :class="['message', message.type]">
-        {{ message.text }}
+      <!-- Form Section -->
+      <section class="form-section">
+        <form @submit.prevent="isEditing ? handleUpdate() : handleSubmit()">
+          <div class="form-group">
+            <input v-model="formData.name" placeholder="Nama Transaksi" required />
+          </div>
+          <div class="form-group">
+            <input
+              v-model.number="formData.amount"
+              type="number"
+              placeholder="Jumlah (Rp)"
+              required
+              min="1"
+            />
+          </div>
+          <div class="form-group">
+            <input v-model="formData.category" placeholder="Kategori (Opsional)" />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">
+              {{ isEditing ? 'Update Transaksi' : 'Tambah Transaksi' }}
+            </button>
+            <button v-if="isEditing" type="button" @click="cancelEdit" class="btn-secondary">
+              Batal
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Status Messages -->
+      <transition name="fade">
+        <div v-if="message" :class="['message', message.type]">
+          <span>{{ message.text }}</span>
+        </div>
+      </transition>
+
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Memproses data...</p>
       </div>
 
-      <!-- Loading Indicator -->
-      <div v-if="isLoading" class="loading">Memuat data...</div>
+      <!-- Transactions Table -->
+      <section class="table-section" v-else-if="transactions.length">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th class="name-col">Nama Transaksi</th>
+                <th class="amount-col">Jumlah</th>
+                <th class="category-col">Kategori</th>
+                <th class="actions-col">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="t in transactions" :key="t.id">
+                <td>{{ t.name }}</td>
+                <td class="amount">Rp{{ t.amount.toLocaleString('id-ID') }}</td>
+                <td>
+                  <span class="category-tag" v-if="t.category">{{ t.category }}</span>
+                  <span v-else>-</span>
+                </td>
+                <td class="actions">
+                  <button @click="handleEdit(t)" class="btn-edit">
+                    <i class="icon-edit"></i> Edit
+                  </button>
+                  <button @click="handleDelete(t.id)" class="btn-delete">
+                    <i class="icon-delete"></i> Hapus
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="summary">
+          <p>
+            Total Transaksi: <strong>{{ transactions.length }}</strong>
+          </p>
+          <p>
+            Total Pengeluaran: <strong>Rp{{ totalExpense.toLocaleString('id-ID') }}</strong>
+          </p>
+        </div>
+      </section>
 
-      <!-- Tabel Daftar Transaksi -->
-      <table v-else-if="transactions.length">
-        <thead>
-          <tr>
-            <th>Nama</th>
-            <th>Jumlah</th>
-            <th>Kategori</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in transactions" :key="t.id">
-            <td>{{ t.name }}</td>
-            <td>Rp{{ t.amount.toLocaleString('id-ID') }}</td>
-            <td>{{ t.category || '-' }}</td>
-            <td class="actions">
-              <button @click="handleEdit(t)" :disabled="isLoading">Edit</button>
-              <button @click="handleDelete(t.id)" :disabled="isLoading">Hapus</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- Empty State -->
       <div v-else class="empty-state">
-        <p>Belum ada transaksi.</p>
+        <div class="empty-icon">
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M3 10H21M7 3V5M17 3V5M6.2 21H17.8C18.9201 21 19.4802 21 19.908 20.782C20.2843 20.5903 20.5903 20.2843 20.782 19.908C21 19.4802 21 18.9201 21 17.8V8.2C21 7.07989 21 6.51984 20.782 6.09202C20.5903 5.71569 20.2843 5.40973 19.908 5.21799C19.4802 5 18.9201 5 17.8 5H6.2C5.0799 5 4.51984 5 4.09202 5.21799C3.71569 5.40973 3.40973 5.71569 3.21799 6.09202C3 6.51984 3 7.07989 3 8.2V17.8C3 18.9201 3 19.4802 3.21799 19.908C3.40973 20.2843 3.71569 20.5903 4.09202 20.782C4.51984 21 5.07989 21 6.2 21Z"
+              stroke="#64748B"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <h3>Belum ada transaksi</h3>
+        <p>Mulai dengan menambahkan transaksi pertama Anda</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import {
   getTransactions,
   addTransaction,
@@ -75,6 +136,11 @@ const isEditing = ref(false)
 const isLoading = ref(false)
 const message = ref(null)
 
+// Computed property untuk total pengeluaran
+const totalExpense = computed(() => {
+  return transactions.value.reduce((total, t) => total + t.amount, 0)
+})
+
 // Load data saat komponen ter-mount
 onMounted(() => {
   loadTransactions()
@@ -89,13 +155,18 @@ const loadTransactions = async () => {
     message.value = null
   } catch (error) {
     console.error('Gagal memuat data:', error)
-    message.value = {
-      text: 'Gagal memuat data transaksi',
-      type: 'error',
-    }
+    showMessage('Gagal memuat data transaksi', 'error')
   } finally {
     isLoading.value = false
   }
+}
+
+// Fungsi untuk menampilkan pesan
+const showMessage = (text, type) => {
+  message.value = { text, type }
+  setTimeout(() => {
+    message.value = null
+  }, 5000)
 }
 
 // Fungsi untuk memulai edit
@@ -125,18 +196,12 @@ const resetForm = () => {
 const handleSubmit = async () => {
   try {
     if (!formData.value.name.trim()) {
-      message.value = {
-        text: 'Nama transaksi harus diisi',
-        type: 'error',
-      }
+      showMessage('Nama transaksi harus diisi', 'error')
       return
     }
 
     if (formData.value.amount <= 0) {
-      message.value = {
-        text: 'Jumlah harus lebih dari 0',
-        type: 'error',
-      }
+      showMessage('Jumlah harus lebih dari 0', 'error')
       return
     }
 
@@ -149,16 +214,10 @@ const handleSubmit = async () => {
 
     resetForm()
     await loadTransactions()
-    message.value = {
-      text: 'Transaksi berhasil ditambahkan',
-      type: 'success',
-    }
+    showMessage('Transaksi berhasil ditambahkan', 'success')
   } catch (error) {
     console.error('Gagal menambah transaksi:', error)
-    message.value = {
-      text: 'Gagal menambahkan transaksi',
-      type: 'error',
-    }
+    showMessage('Gagal menambahkan transaksi', 'error')
   } finally {
     isLoading.value = false
   }
@@ -168,26 +227,17 @@ const handleSubmit = async () => {
 const handleUpdate = async () => {
   try {
     if (!formData.value.id) {
-      message.value = {
-        text: 'ID transaksi tidak valid',
-        type: 'error',
-      }
+      showMessage('ID transaksi tidak valid', 'error')
       return
     }
 
     if (!formData.value.name.trim()) {
-      message.value = {
-        text: 'Nama transaksi harus diisi',
-        type: 'error',
-      }
+      showMessage('Nama transaksi harus diisi', 'error')
       return
     }
 
     if (formData.value.amount <= 0) {
-      message.value = {
-        text: 'Jumlah harus lebih dari 0',
-        type: 'error',
-      }
+      showMessage('Jumlah harus lebih dari 0', 'error')
       return
     }
 
@@ -201,16 +251,10 @@ const handleUpdate = async () => {
     isEditing.value = false
     resetForm()
     await loadTransactions()
-    message.value = {
-      text: 'Transaksi berhasil diperbarui',
-      type: 'success',
-    }
+    showMessage('Transaksi berhasil diperbarui', 'success')
   } catch (error) {
     console.error('Gagal mengupdate transaksi:', error)
-    message.value = {
-      text: 'Gagal mengupdate transaksi',
-      type: 'error',
-    }
+    showMessage('Gagal mengupdate transaksi', 'error')
   } finally {
     isLoading.value = false
   }
@@ -224,248 +268,329 @@ const handleDelete = async (id) => {
     isLoading.value = true
     await deleteTransaction(id)
     await loadTransactions()
-    message.value = {
-      text: 'Transaksi berhasil dihapus',
-      type: 'success',
-    }
+    showMessage('Transaksi berhasil dihapus', 'success')
   } catch (error) {
     console.error('Gagal menghapus transaksi:', error)
-    message.value = {
-      text: 'Gagal menghapus transaksi',
-      type: 'error',
-    }
+    showMessage('Gagal menghapus transaksi', 'error')
   } finally {
     isLoading.value = false
   }
 }
 </script>
 
-<style>
-:root {
-  --primary-color: #4361ee;
-  --primary-hover: #3a56d4;
-  --danger-color: #ef476f;
-  --danger-hover: #d64060;
-  --success-color: #06d6a0;
-  --background-color: #f7f9fc;
-  --card-bg: #ffffff;
-  --text-color: #333333;
-  --text-muted: #6c757d;
-  --border-color: #e0e6ed;
-  --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  --radius: 8px;
-  --transition: all 0.3s ease;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family:
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    sans-serif;
-}
-
-body {
-  background-color: var(--background-color);
-  color: var(--text-color);
-  line-height: 1.6;
-  padding: 20px;
+<style scoped>
+/* Base Styles */
+#app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8fafc;
+  padding: 2rem;
 }
 
 .container {
-  max-width: 900px;
+  width: 100%;
+  max-width: 1200px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  padding: 2.5rem;
   margin: 0 auto;
-  padding: 30px;
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  transition: var(--transition);
 }
 
-h1 {
-  color: var(--primary-color);
-  margin-bottom: 1.5rem;
-  font-size: 2rem;
-  font-weight: 600;
+header {
   text-align: center;
-  position: relative;
-  padding-bottom: 0.5rem;
+  margin-bottom: 2.5rem;
 }
 
-h1::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 3px;
-  background-color: var(--primary-color);
-  border-radius: 3px;
+header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 1rem;
+}
+
+/* Form Styles */
+.form-section {
+  background-color: #f8fafc;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #3b82f6;
 }
 
 form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 20px;
-  background-color: #f0f4f8;
-  border-radius: var(--radius);
-  border-left: 4px solid var(--primary-color);
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
 }
 
 input {
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 1rem;
-  transition: var(--transition);
-  width: 100%;
+  transition: all 0.2s ease;
 }
 
 input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.form-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+/* Button Styles */
 button {
-  padding: 12px 16px;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
 }
 
-button:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  transform: translateY(-2px);
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
 }
 
-button:active:not(:disabled) {
-  transform: translateY(0);
+.btn-primary:hover {
+  background-color: #2563eb;
 }
 
-button[type='button'] {
-  background-color: #f0f4f8;
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
+.btn-secondary {
+  background-color: white;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
 }
 
-button[type='button']:hover:not(:disabled) {
-  background-color: #e1e5eb;
+.btn-secondary:hover {
+  background-color: #f8fafc;
 }
 
-.actions button:first-child {
-  background-color: #4895ef;
+.btn-edit {
+  background-color: #f59e0b;
+  color: white;
 }
 
-.actions button:last-child {
-  background-color: var(--danger-color);
+.btn-edit:hover {
+  background-color: #d97706;
 }
 
-.actions button:first-child:hover:not(:disabled) {
-  background-color: #3d87db;
+.btn-delete {
+  background-color: #ef4444;
+  color: white;
 }
 
-.actions button:last-child:hover:not(:disabled) {
-  background-color: var(--danger-hover);
+.btn-delete:hover {
+  background-color: #dc2626;
 }
 
+/* Message Styles */
 .message {
-  padding: 12px 16px;
-  margin: 16px 0;
-  border-radius: var(--radius);
-  font-weight: 500;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   animation: fadeIn 0.3s ease;
 }
 
 .message.error {
-  background-color: #ffe3e3;
-  color: #d90429;
-  border-left: 4px solid #d90429;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-left: 4px solid #dc2626;
 }
 
 .message.success {
-  background-color: #e3f8f4;
-  color: #087f5b;
-  border-left: 4px solid #087f5b;
+  background-color: #dcfce7;
+  color: #16a34a;
+  border-left: 4px solid #16a34a;
 }
 
-.loading {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-muted);
-  font-style: italic;
-  animation: pulse 1.5s infinite;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Table Styles */
+.table-section {
+  margin-top: 2rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 24px;
-  box-shadow: var(--shadow);
-  border-radius: var(--radius);
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 thead {
-  background-color: #f0f4f8;
+  background-color: #f1f5f9;
 }
 
 th {
+  padding: 1rem;
   text-align: left;
-  padding: 16px;
   font-weight: 600;
-  color: var(--primary-color);
-  border-bottom: 2px solid var(--primary-color);
+  color: #1e293b;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
 }
 
 tbody tr:last-child td {
   border-bottom: none;
 }
 
-tbody tr {
-  transition: var(--transition);
+tbody tr:hover {
+  background-color: #f8fafc;
 }
 
-tbody tr:hover {
-  background-color: #f9fafc;
+.amount {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.category-tag {
+  background-color: #e2e8f0;
+  color: #475569;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .actions button {
-  padding: 8px 12px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
   font-size: 0.875rem;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text-muted);
-  background-color: #f9fafb;
-  border-radius: var(--radius);
-  margin-top: 24px;
-  border: 1px dashed var(--border-color);
+.summary p {
+  color: #64748b;
 }
 
+.summary strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #e2e8f0;
+  margin-top: 2rem;
+}
+
+.empty-icon {
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -477,25 +602,47 @@ tbody tr:hover {
   }
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.6;
-  }
-}
-
+/* Responsive Adjustments */
 @media (max-width: 768px) {
   .container {
-    padding: 20px 15px;
+    padding: 1.5rem;
   }
 
   form {
     grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+  }
+
+  th,
+  td {
+    padding: 0.75rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .summary {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #app {
+    padding: 1rem;
+  }
+
+  .container {
+    padding: 1.25rem;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
   }
 }
 </style>
