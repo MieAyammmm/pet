@@ -4,12 +4,17 @@ import { cors } from 'hono/cors'
 const app = new Hono()
 
 // ======================
-// 1. Middleware
+// 1. Middleware & CORS Configuration
 // ======================
+app.use('*', async (c, next) => {
+  console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.path}`)
+  await next()
+})
+
 app.use(
   '/*',
   cors({
-    origin: ['http://localhost:5173', 'https://expense-tracker-6kf.pages.dev/'],
+    origin: ['http://localhost:5173', 'https://expense-tracker-6kf.pages.dev'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
     exposeHeaders: ['Content-Length'],
@@ -18,23 +23,32 @@ app.use(
   }),
 )
 
-app.options('/*', (c) => {
+app.options('*', (c) => {
   return new Response(null, {
     headers: {
-      'Access-Control-Allow-Origin': 'https://expense-tracker-6kf.pages.dev',
+      'Access-Control-Allow-Origin':
+        c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Max-Age': '600',
     },
+    status: 204,
   })
 })
 
 // ======================
 // 2. Health Check Endpoint
 // ======================
-app.get('/', (c) => c.text('Expense Tracker API Ready 🚀'))
+app.get('/', (c) => {
+  return c.text('Expense Tracker API Ready 🚀', 200, {
+    'Access-Control-Allow-Origin':
+      c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+  })
+})
 
 // ======================
-// 3. CRUD Endpoints (Dengan Error Handling)
+// 3. CRUD Endpoints
 // ======================
 
 // Get all transactions
@@ -43,10 +57,31 @@ app.get('/transactions', async (c) => {
     const { results } = await c.env.DB.prepare(
       'SELECT id, name, amount, category, created_at FROM transactions ORDER BY created_at DESC',
     ).all()
-    return c.json(results)
+
+    return c.json(
+      {
+        success: true,
+        data: results,
+      },
+      200,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   } catch (error) {
     console.error('DB Error:', error)
-    return c.json({ error: 'Failed to fetch transactions' }, 500)
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to fetch transactions',
+      },
+      500,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   }
 })
 
@@ -55,11 +90,36 @@ app.post('/transactions', async (c) => {
   try {
     const { name, amount, category } = await c.req.json()
 
-    // Validasi input
-    if (!name || typeof amount !== 'number' || amount <= 0) {
-      return c.json({ error: 'Invalid input data. Name and positive amount are required.' }, 400)
+    // Validation
+    if (!name?.trim()) {
+      return c.json(
+        {
+          success: false,
+          error: 'Transaction name is required',
+        },
+        400,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
     }
 
+    if (typeof amount !== 'number' || amount <= 0) {
+      return c.json(
+        {
+          success: false,
+          error: 'Amount must be a positive number',
+        },
+        400,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
+    }
+
+    // Insert to database
     const { success, meta } = await c.env.DB.prepare(
       'INSERT INTO transactions (name, amount, category) VALUES (?, ?, ?)',
     )
@@ -67,10 +127,10 @@ app.post('/transactions', async (c) => {
       .run()
 
     if (!success) {
-      return c.json({ error: 'Failed to insert transaction' }, 500)
+      throw new Error('Database insert failed')
     }
 
-    // Ambil data yang baru dibuat
+    // Get the newly created transaction
     const { results } = await c.env.DB.prepare('SELECT * FROM transactions WHERE id = ?')
       .bind(meta.last_row_id)
       .all()
@@ -79,13 +139,27 @@ app.post('/transactions', async (c) => {
       {
         success: true,
         data: results[0],
-        message: 'Transaction added successfully',
+        message: 'Transaction created successfully',
       },
       201,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
     )
   } catch (error) {
-    console.error('DB Error:', error)
-    return c.json({ error: 'Failed to add transaction' }, 500)
+    console.error('Transaction Error:', error)
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to create transaction',
+      },
+      500,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   }
 })
 
@@ -95,14 +169,51 @@ app.put('/transactions/:id', async (c) => {
     const id = c.req.param('id')
     const { name, amount, category } = await c.req.json()
 
-    // Validasi input
+    // Validate ID
     if (!id || isNaN(parseInt(id))) {
-      return c.json({ error: 'Invalid transaction ID' }, 400)
-    }
-    if (!name || typeof amount !== 'number' || amount <= 0) {
-      return c.json({ error: 'Invalid input data. Name and positive amount are required.' }, 400)
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid transaction ID',
+        },
+        400,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
     }
 
+    // Validate input
+    if (!name?.trim()) {
+      return c.json(
+        {
+          success: false,
+          error: 'Transaction name is required',
+        },
+        400,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
+    }
+
+    if (typeof amount !== 'number' || amount <= 0) {
+      return c.json(
+        {
+          success: false,
+          error: 'Amount must be a positive number',
+        },
+        400,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
+    }
+
+    // Update database
     const { success } = await c.env.DB.prepare(
       'UPDATE transactions SET name = ?, amount = ?, category = ? WHERE id = ?',
     )
@@ -110,22 +221,49 @@ app.put('/transactions/:id', async (c) => {
       .run()
 
     if (!success) {
-      return c.json({ error: 'Transaction not found or update failed' }, 404)
+      return c.json(
+        {
+          success: false,
+          error: 'Transaction not found',
+        },
+        404,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
     }
 
-    // Ambil data yang sudah diupdate
+    // Get updated transaction
     const { results } = await c.env.DB.prepare('SELECT * FROM transactions WHERE id = ?')
       .bind(id)
       .all()
 
-    return c.json({
-      success: true,
-      data: results[0],
-      message: 'Transaction updated successfully',
-    })
+    return c.json(
+      {
+        success: true,
+        data: results[0],
+        message: 'Transaction updated successfully',
+      },
+      200,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   } catch (error) {
-    console.error('DB Error:', error)
-    return c.json({ error: 'Failed to update transaction' }, 500)
+    console.error('Update Error:', error)
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to update transaction',
+      },
+      500,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   }
 })
 
@@ -134,42 +272,103 @@ app.delete('/transactions/:id', async (c) => {
   try {
     const id = c.req.param('id')
 
-    // Validasi ID
+    // Validate ID
     if (!id || isNaN(parseInt(id))) {
-      return c.json({ error: 'Invalid transaction ID' }, 400)
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid transaction ID',
+        },
+        400,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
     }
 
-    // Cek apakah transaksi ada sebelum menghapus
+    // Check if exists
     const { results } = await c.env.DB.prepare('SELECT id FROM transactions WHERE id = ?')
       .bind(id)
       .all()
 
     if (!results.length) {
-      return c.json({ error: 'Transaction not found' }, 404)
+      return c.json(
+        {
+          success: false,
+          error: 'Transaction not found',
+        },
+        404,
+        {
+          'Access-Control-Allow-Origin':
+            c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+        },
+      )
     }
 
+    // Delete from database
     const { success } = await c.env.DB.prepare('DELETE FROM transactions WHERE id = ?')
       .bind(id)
       .run()
 
-    return c.json({
-      success: !!success,
-      message: 'Transaction deleted successfully',
-    })
+    return c.json(
+      {
+        success: true,
+        message: 'Transaction deleted successfully',
+      },
+      200,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   } catch (error) {
-    console.error('DB Error:', error)
-    return c.json({ error: 'Failed to delete transaction' }, 500)
+    console.error('Delete Error:', error)
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to delete transaction',
+      },
+      500,
+      {
+        'Access-Control-Allow-Origin':
+          c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+      },
+    )
   }
 })
 
 // ======================
-// 4. Error Handling Global
+// 4. Error Handling
 // ======================
 app.onError((err, c) => {
   console.error('Server Error:', err)
-  return c.json({ error: 'Internal server error' }, 500)
+  return c.json(
+    {
+      success: false,
+      error: 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { details: err.message }),
+    },
+    500,
+    {
+      'Access-Control-Allow-Origin':
+        c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+    },
+  )
 })
 
-app.notFound((c) => c.json({ error: 'Endpoint not found' }, 404))
+app.notFound((c) => {
+  return c.json(
+    {
+      success: false,
+      error: 'Endpoint not found',
+    },
+    404,
+    {
+      'Access-Control-Allow-Origin':
+        c.req.header('Origin') || 'https://expense-tracker-6kf.pages.dev',
+    },
+  )
+})
 
 export default app
