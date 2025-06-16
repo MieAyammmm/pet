@@ -14,7 +14,11 @@ app.use('*', async (c, next) => {
 app.use(
   '/*',
   cors({
-    origin: ['http://localhost:5173', 'https://expense-tracker-6kf.pages.dev'],
+    origin: [
+      'http://localhost:5173',
+      'https://expense-tracker-6kf.pages.dev',
+      'https://expense-tracker.briad0096.workers.dev',
+    ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
     exposeHeaders: ['Content-Length'],
